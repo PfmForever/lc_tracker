@@ -524,7 +524,7 @@ async function syncNow(silent = false) {
   setSyncStatus('syncing','同步中…');
   try {
     const remote = await ghRead();
-    if (remote) { db = remote; saveDb(db); }
+    if (remote) { db = remote; if (!db.daily) db.daily = {}; saveDb(db); }
     await ghWrite(db, `🔄 sync ${today()}`);
     setSyncStatus('ok','已同步 '+new Date().toLocaleTimeString('zh-TW'));
     if (!silent) toast('已同步到 GitHub ✓');
@@ -664,7 +664,7 @@ function renderCurrentTab() {
 function updateStats() {
   const p = db.problems;
   const t = today();
-  const doneIds = (db.daily[t]?.done || []);
+  const doneIds = (db.daily?.[t]?.done || []);
   const todayDue = p.filter(x =>
     x.status !== 'confident_4' &&
     x.nextDate && x.nextDate <= t &&
@@ -683,6 +683,7 @@ function updateStats() {
 // DAILY
 // ═══════════════════════════════════════════════════
 function getDailyDone(date) {
+  if (!db.daily) db.daily = {};
   if (!db.daily[date]) db.daily[date] = { done: [] };
   if (!db.daily[date].done) db.daily[date].done = [];
   return db.daily[date];
@@ -1140,7 +1141,7 @@ document.addEventListener('keydown', e => {
     setSyncStatus('syncing', '連線中…');
     try {
       const remote = await ghRead();
-      if (remote) { db = remote; saveDb(db); }
+      if (remote) { db = remote; if (!db.daily) db.daily = {}; saveDb(db); }
       setSyncStatus('ok', '已同步 ' + new Date().toLocaleTimeString('zh-TW'));
       updateStats(); renderCurrentTab();
     } catch (e) {
