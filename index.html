@@ -609,11 +609,7 @@ function today() { return new Date().toISOString().slice(0, 10); }
 function uid()   { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 function normalizeDb(d) {
   if (!d.daily) d.daily = {};
-  const t = today();
-  (d.problems || []).forEach(p => {
-    if (!p.id) p.id = uid();
-    if (p.nextDate && p.nextDate < t && p.status !== 'confident_4') p.nextDate = t;
-  });
+  (d.problems || []).forEach(p => { if (!p.id) p.id = uid(); });
   return d;
 }
 function fmt(iso){ if (!iso) return '—'; return new Date(iso).toLocaleDateString('zh-TW'); }
