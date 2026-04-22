@@ -524,7 +524,7 @@ async function syncNow(silent = false) {
   setSyncStatus('syncing','同步中…');
   try {
     const remote = await ghRead();
-    if (remote) { db = remote; if (!db.daily) db.daily = {}; saveDb(db); }
+    if (remote) { db = normalizeDb(remote); saveDb(db); }
     await ghWrite(db, `🔄 sync ${today()}`);
     setSyncStatus('ok','已同步 '+new Date().toLocaleTimeString('zh-TW'));
     if (!silent) toast('已同步到 GitHub ✓');
@@ -607,6 +607,11 @@ function clearGhConfig() {
 // ═══════════════════════════════════════════════════
 function today() { return new Date().toISOString().slice(0, 10); }
 function uid()   { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function normalizeDb(d) {
+  if (!d.daily) d.daily = {};
+  (d.problems || []).forEach(p => { if (!p.id) p.id = uid(); });
+  return d;
+}
 function fmt(iso){ if (!iso) return '—'; return new Date(iso).toLocaleDateString('zh-TW'); }
 function escH(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function slugify(t){ return t.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); }
@@ -1141,7 +1146,7 @@ document.addEventListener('keydown', e => {
     setSyncStatus('syncing', '連線中…');
     try {
       const remote = await ghRead();
-      if (remote) { db = remote; if (!db.daily) db.daily = {}; saveDb(db); }
+      if (remote) { db = normalizeDb(remote); saveDb(db); }
       setSyncStatus('ok', '已同步 ' + new Date().toLocaleTimeString('zh-TW'));
       updateStats(); renderCurrentTab();
     } catch (e) {
