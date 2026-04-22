@@ -605,7 +605,7 @@ function clearGhConfig() {
 // ═══════════════════════════════════════════════════
 // UTILS
 // ═══════════════════════════════════════════════════
-function today() { return new Date().toISOString().slice(0, 10); }
+function today() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function uid()   { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 function normalizeDb(d) {
   if (!d.daily) d.daily = {};
