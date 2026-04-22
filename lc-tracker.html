@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LC Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0e14; --surface:#0f1520; --card:#131c2e; --border:#1e2d45;
+    --accent:#00e5a0; --accent2:#ff6b6b; --accent3:#ffd93d; --accent4:#6bceff;
+    --text:#c8d8f0; --muted:#4a6080;
+    --easy:#00e5a0; --medium:#ffd93d; --hard:#ff6b6b;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;min-height:100vh;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,160,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,160,.025) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+  code{background:rgba(107,206,255,.12);color:var(--accent4);padding:1px 5px;border-radius:3px;font-size:11px}
+
+  .shell{position:relative;z-index:1;max-width:1280px;margin:0 auto;padding:0 20px 60px}
+
+  header{padding:28px 0 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);margin-bottom:24px;gap:12px;flex-wrap:wrap}
+  .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:#fff;letter-spacing:-.5px}
+  .logo span{color:var(--accent)}
+  .header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+  .sync-status{display:flex;align-items:center;gap:6px;font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid var(--border);color:var(--muted);white-space:nowrap}
+  .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s}
+  .sync-status.ok .sync-dot{background:var(--accent)}
+  .sync-status.syncing .sync-dot{background:var(--accent3);animation:pulse .8s infinite}
+  .sync-status.error .sync-dot{background:var(--accent2)}
+  .sync-status.ok{border-color:rgba(0,229,160,.2);color:var(--accent)}
+  .sync-status.error{border-color:rgba(255,107,107,.2);color:var(--accent2)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+  .stats-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px}
+  .stat-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;position:relative;overflow:hidden}
+  .stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+  .stat-card.s-total::before{background:var(--accent4)}
+  .stat-card.s-today::before{background:var(--accent3)}
+  .stat-card.s-todo::before{background:var(--muted)}
+  .stat-card.s-learning::before{background:var(--accent2)}
+  .stat-card.s-mastered::before{background:var(--accent)}
+  .stat-num{font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:700;line-height:1;margin-bottom:4px;letter-spacing:-.02em}
+  .stat-card.s-total .stat-num{color:var(--accent4)}
+  .stat-card.s-today .stat-num{color:var(--accent3)}
+  .stat-card.s-learning .stat-num{color:var(--accent2)}
+  .stat-card.s-mastered .stat-num{color:var(--accent)}
+  .stat-label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:24px}
+  .tab{padding:10px 20px;cursor:pointer;color:var(--muted);font-size:12px;letter-spacing:.04em;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;user-select:none}
+  .tab:hover{color:var(--text)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+  .section{display:none}
+  .section.active{display:block}
+
+  .toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+  .toolbar-spacer{flex:1}
+
+  input[type=text],input[type=number],input[type=password],input[type=date],select,textarea{background:var(--card);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;padding:8px 12px;outline:none;transition:border-color .15s;width:100%}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+  select option{background:var(--card)}
+  .search-box{width:220px}
+  .filter-select{width:140px}
+
+  .btn{padding:8px 16px;border-radius:7px;border:none;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;transition:all .15s;white-space:nowrap}
+  .btn-primary{background:var(--accent);color:#000}
+  .btn-primary:hover{background:#00ffb3}
+  .btn-success{background:var(--accent);color:#000;padding:10px 20px;font-size:13px;border-radius:7px;border:none;cursor:pointer;font-family:'JetBrains Mono',monospace;font-weight:500;transition:all .15s}
+  .btn-success:hover{background:#00ffb3}
+  .btn-fail{background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.4);color:var(--accent2);padding:10px 20px;font-size:13px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-weight:500;border-radius:7px;transition:all .15s}
+  .btn-fail:hover{background:rgba(255,107,107,.25)}
+  .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+  .btn-sm{padding:5px 10px;font-size:11px}
+  .btn-icon{background:none;border:none;cursor:pointer;color:var(--muted);font-size:15px;padding:4px 6px;border-radius:5px;transition:all .15s;line-height:1;font-family:inherit}
+  .btn-icon:hover{color:var(--text);background:var(--border)}
+  .btn-icon.danger:hover{color:var(--accent2)}
+
+  .table-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+  table{width:100%;border-collapse:collapse}
+  th{background:var(--surface);padding:11px 16px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:400;border-bottom:1px solid var(--border)}
+  td{padding:11px 16px;border-bottom:1px solid var(--border);vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:rgba(255,255,255,.015)}
+
+  .badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:5px;font-size:10px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+  .badge-easy{background:rgba(0,229,160,.12);color:var(--easy);border:1px solid rgba(0,229,160,.2)}
+  .badge-medium{background:rgba(255,217,61,.12);color:var(--medium);border:1px solid rgba(255,217,61,.2)}
+  .badge-hard{background:rgba(255,107,107,.12);color:var(--hard);border:1px solid rgba(255,107,107,.2)}
+  .badge-todo{background:rgba(74,96,128,.18);color:var(--muted);border:1px solid var(--border)}
+  .badge-first_time_done{background:rgba(255,217,61,.12);color:var(--accent3);border:1px solid rgba(255,217,61,.25)}
+  .badge-unfamiliar{background:rgba(255,107,107,.12);color:var(--accent2);border:1px solid rgba(255,107,107,.25)}
+  .badge-confident_1{background:rgba(0,229,160,.08);color:rgba(0,229,160,.85);border:1px solid rgba(0,229,160,.15)}
+  .badge-confident_2{background:rgba(0,229,160,.13);color:rgba(0,229,160,.95);border:1px solid rgba(0,229,160,.25)}
+  .badge-confident_3{background:rgba(0,229,160,.2);color:#00e5a0;border:1px solid rgba(0,229,160,.4)}
+  .badge-confident_4{background:rgba(0,229,160,.3);color:#00ffb3;border:1px solid rgba(0,229,160,.6)}
+
+  .tags{display:flex;gap:4px;flex-wrap:wrap}
+  .tag{background:rgba(107,206,255,.08);color:var(--accent4);border:1px solid rgba(107,206,255,.15);border-radius:4px;padding:2px 6px;font-size:10px}
+
+  .nd-overdue{color:var(--accent2);font-weight:500}
+  .nd-today{color:var(--accent3);font-weight:500}
+  .nd-soon{color:var(--text)}
+  .nd-later{color:var(--muted)}
+
+  .empty-state{text-align:center;padding:50px 20px;color:var(--muted)}
+  .empty-icon{font-size:40px;margin-bottom:10px}
+
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);z-index:100;display:none;align-items:center;justify-content:center;padding:20px}
+  .overlay.open{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;width:100%;max-width:520px;animation:slideUp .2s ease;max-height:90vh;overflow-y:auto}
+  .modal-wide{max-width:680px}
+  @keyframes slideUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+  .modal-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:20px;color:#fff}
+  .form-group{margin-bottom:14px}
+  .form-label{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .form-hint{color:var(--muted);font-size:11px;margin-top:5px;line-height:1.6}
+  textarea{resize:vertical;min-height:70px}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap}
+
+  .daily-header{display:flex;align-items:baseline;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+  .daily-count{color:var(--accent3);font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700}
+  .daily-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:24px}
+  .daily-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;position:relative;transition:all .2s}
+  .daily-card:hover{border-color:rgba(107,206,255,.4);transform:translateY(-1px)}
+  .daily-card.overdue{border-left:3px solid var(--accent2)}
+  .daily-card-num{color:var(--muted);font-size:11px;margin-bottom:3px;display:flex;gap:8px;align-items:center}
+  .daily-card-title{font-weight:500;color:#fff;margin-bottom:10px;font-size:14px;line-height:1.4}
+  .daily-card-footer{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .daily-card-reason{font-size:10px;color:var(--muted);margin-top:8px}
+  .check-btn{position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:50%;border:2px solid var(--border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;transition:all .15s}
+  .check-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+  .section-header{display:flex;align-items:baseline;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .section-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:#fff}
+  .section-sub{color:var(--muted);font-size:11px}
+
+  .heatmap-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:22px;margin-bottom:22px;overflow-x:auto}
+  .heatmap-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:600;color:#fff;margin-bottom:14px}
+  .heatmap{display:flex;gap:4px}
+  .heatmap-col{display:flex;flex-direction:column;gap:4px}
+  .heatmap-cell{width:14px;height:14px;border-radius:3px;background:var(--border);cursor:default;transition:transform .1s}
+  .heatmap-cell:hover{transform:scale(1.5);z-index:10}
+  .heatmap-cell[data-count="1"]{background:rgba(0,229,160,.25)}
+  .heatmap-cell[data-count="2"]{background:rgba(0,229,160,.45)}
+  .heatmap-cell[data-count="3"]{background:rgba(0,229,160,.65)}
+  .heatmap-cell[data-count="4"]{background:rgba(0,229,160,.85)}
+  .heatmap-cell[data-count="5"]{background:rgba(0,229,160,1)}
+
+  .attempt-log{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-top:6px;font-size:12px;color:var(--muted);max-height:150px;overflow-y:auto}
+  .attempt-item{padding:5px 0;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .attempt-item:last-child{border-bottom:none}
+  .attempt-date{color:var(--muted);min-width:85px;font-size:11px}
+  .lc-link{color:var(--accent4);text-decoration:none;font-size:11px}
+  .lc-link:hover{text-decoration:underline}
+
+  .gh-status-block{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:16px}
+  .gh-row{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;align-items:center;font-size:12px}
+  .gh-label{color:var(--muted)}
+  .gh-val{color:var(--text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .divider{border:none;border-top:1px solid var(--border);margin:18px 0}
+
+  .status-info{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12px;line-height:1.6}
+  .status-info-row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .status-info-row + .status-info-row{margin-top:6px}
+  .status-info-label{color:var(--muted)}
+
+  .attempt-choice{display:flex;gap:10px;margin-top:16px}
+  .attempt-choice > *{flex:1;text-align:center}
+
+  .toast-container{position:fixed;bottom:22px;right:22px;z-index:999;display:flex;flex-direction:column;gap:8px}
+  .toast{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:11px 15px;font-size:12px;color:var(--text);animation:toastIn .2s ease;max-width:320px}
+  .toast.error{border-left-color:var(--accent2)}
+  .toast.warn{border-left-color:var(--accent3)}
+  @keyframes toastIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+
+  ::-webkit-scrollbar{width:5px;height:5px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+
+  @media(max-width:768px){
+    .stats-bar{grid-template-columns:repeat(3,1fr)}
+    .form-row{grid-template-columns:1fr}
+    th:nth-child(5),td:nth-child(5),th:nth-child(8),td:nth-child(8){display:none}
+  }
+  @media(max-width:480px){.stats-bar{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header>
+    <div class="logo">LC <span>Tracker</span></div>
+    <div class="header-right">
+      <div class="sync-status" id="syncStatus">
+        <div class="sync-dot"></div>
+        <span id="syncText">未設定 GitHub</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="syncNow()" id="syncBtn" style="display:none">↻ 同步</button>
+      <button class="btn btn-ghost btn-sm" onclick="openSettings()">⚙ 設定</button>
+    </div>
+  </header>
+
+  <div class="stats-bar">
+    <div class="stat-card s-total"><div class="stat-num" id="statTotal">0</div><div class="stat-label">總題數</div></div>
+    <div class="stat-card s-today"><div class="stat-num" id="statToday">0</div><div class="stat-label">今日待做</div></div>
+    <div class="stat-card s-todo"><div class="stat-num" id="statTodo">0</div><div class="stat-label">待寫 Todo</div></div>
+    <div class="stat-card s-learning"><div class="stat-num" id="statLearning">0</div><div class="stat-label">學習中</div></div>
+    <div class="stat-card s-mastered"><div class="stat-num" id="statMastered">0</div><div class="stat-label">已掌握</div></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('daily')">📅 今日練習</div>
+    <div class="tab" onclick="switchTab('problems')">📋 題目列表</div>
+    <div class="tab" onclick="switchTab('heatmap')">📊 進度圖</div>
+  </div>
+
+  <div class="section active" id="tab-daily">
+    <div class="daily-header">
+      <span class="section-title">今日待練習</span>
+      <span class="daily-count" id="dailyCount">0 題</span>
+      <span class="section-sub">（nextDate ≤ 今日，且未完成）</span>
+    </div>
+    <div id="dailyGrid" class="daily-grid"></div>
+
+    <div class="section-header"><div class="section-title">手動加入今日</div></div>
+    <div class="toolbar">
+      <select id="dailyPick" style="width:300px"><option value="">-- 選擇題目 --</option></select>
+      <button class="btn btn-ghost" onclick="addToToday()">加入今日</button>
+    </div>
+
+    <div class="section-header" style="margin-top:16px"><div class="section-title">今日完成</div></div>
+    <div id="dailyDoneList" class="table-wrap">
+      <div class="empty-state"><div class="empty-icon">🏁</div><p>今日尚未完成任何題目</p></div>
+    </div>
+  </div>
+
+  <div class="section" id="tab-problems">
+    <div class="toolbar">
+      <input type="text" class="search-box" id="searchBox" placeholder="搜尋題號 / 名稱..." oninput="renderTable()">
+      <select id="filterStatus" class="filter-select" onchange="renderTable()">
+        <option value="">全部狀態</option>
+        <option value="todo">待寫</option>
+        <option value="first_time_done">初寫</option>
+        <option value="unfamiliar">不熟</option>
+        <option value="confident_1">熟練 L1</option>
+        <option value="confident_2">熟練 L2</option>
+        <option value="confident_3">熟練 L3</option>
+        <option value="confident_4">已掌握</option>
+      </select>
+      <select id="filterDiff" class="filter-select" onchange="renderTable()">
+        <option value="">全部難度</option>
+        <option value="Easy">Easy</option>
+        <option value="Medium">Medium</option>
+        <option value="Hard">Hard</option>
+      </select>
+      <div class="toolbar-spacer"></div>
+      <button class="btn btn-ghost btn-sm" onclick="openImport()">⬆ 匯入排程</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportData()">⬇ 匯出</button>
+      <button class="btn btn-primary" onclick="openAdd()">＋ 新增</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>#</th><th>題目</th><th>難度</th><th>狀態</th><th>標籤</th><th>嘗試</th><th>下次</th><th>最後更新</th><th></th>
+        </tr></thead>
+        <tbody id="problemsTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section" id="tab-heatmap">
+    <div class="heatmap-wrap">
+      <div class="heatmap-title">練習熱度圖（近18週）</div>
+      <div id="heatmapGrid" class="heatmap"></div>
+    </div>
+    <div class="section-header"><div class="section-title">題目類型分布</div></div>
+    <div id="tagStats" class="daily-grid"></div>
+  </div>
+</div>
+
+<div class="overlay" id="settingsOverlay" onclick="closeSettings(event)">
+  <div class="modal modal-wide" onclick="event.stopPropagation()">
+    <div class="modal-title">⚙ GitHub 同步設定</div>
+    <div class="gh-status-block" id="ghStatusBlock" style="display:none">
+      <div class="gh-row">
+        <span class="gh-label">Repo</span><span class="gh-val" id="ghStatusRepo">—</span>
+        <span class="gh-label">資料檔案</span><span class="gh-val" id="ghStatusFile">—</span>
+        <span class="gh-label">最後同步</span><span class="gh-val" id="ghStatusTime">—</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Personal Access Token</label>
+      <input type="password" id="sToken" placeholder="ghp_xxxx 或 github_pat_xxxx">
+      <div class="form-hint">
+        GitHub → Settings → Developer settings → Personal access tokens → Fine-grained<br>
+        需要 <code>Contents: Read and write</code> 權限
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">GitHub 帳號</label><input type="text" id="sOwner" placeholder="your-username"></div>
+      <div class="form-group"><label class="form-label">Repo 名稱</label><input type="text" id="sRepo" placeholder="lc-tracker"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Branch</label><input type="text" id="sBranch" placeholder="main"></div>
+      <div class="form-group"><label class="form-label">資料檔案路徑</label><input type="text" id="sFile" placeholder="data.json"></div>
+    </div>
+    <hr class="divider">
+    <div style="color:var(--muted);font-size:11px;line-height:1.7">
+      Token 僅儲存在瀏覽器 <code>localStorage</code>。每次更新都會自動 commit 到你的 repo。
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="clearGhConfig()" style="margin-right:auto;color:var(--accent2);border-color:rgba(255,107,107,.3)">清除設定</button>
+      <button class="btn btn-ghost" onclick="closeSettings()">取消</button>
+      <button class="btn btn-primary" onclick="saveSettings()">儲存並測試</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title" id="modalTitle">新增題目</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">題號</label><input type="number" id="fNum" placeholder="1"></div>
+      <div class="form-group"><label class="form-label">難度</label>
+        <select id="fDiff"><option>Easy</option><option selected>Medium</option><option>Hard</option></select>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">題目名稱</label><input type="text" id="fTitle" placeholder="Two Sum"></div>
+    <div class="form-group"><label class="form-label">狀態</label>
+      <select id="fStatus">
+        <option value="todo">待寫 Todo</option>
+        <option value="first_time_done">初寫 (+1 天)</option>
+        <option value="unfamiliar">不熟 (+1 天)</option>
+        <option value="confident_1">熟練 L1 (+4 天)</option>
+        <option value="confident_2">熟練 L2 (+10 天)</option>
+        <option value="confident_3">熟練 L3 (+21 天)</option>
+        <option value="confident_4">已掌握</option>
+      </select>
+      <div class="form-hint">存檔時會根據狀態自動計算 nextDate（除非下方明確指定）</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">下次練習日期（選填，覆蓋自動計算）</label>
+      <input type="date" id="fNextDate">
+    </div>
+    <div class="form-group"><label class="form-label">標籤（逗號分隔）</label><input type="text" id="fTags" placeholder="Array, Hash Map"></div>
+    <div class="form-group"><label class="form-label">筆記</label><textarea id="fNote" placeholder="解題思路、卡住的地方..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveForm()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="attemptOverlay" onclick="closeAttempt(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title" id="attemptTitle">記錄嘗試</div>
+    <div class="status-info" id="attemptStatusInfo"></div>
+    <div class="form-group">
+      <label class="form-label">備註（這次卡在哪裡...）</label>
+      <textarea id="aNote"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">過去嘗試紀錄</label>
+      <div class="attempt-log" id="attemptLog"></div>
+    </div>
+    <div class="attempt-choice" id="attemptChoice"></div>
+    <div class="modal-actions" style="margin-top:10px">
+      <button class="btn btn-ghost" onclick="closeAttempt()">取消</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="importOverlay" onclick="closeImport(event)">
+  <div class="modal modal-wide" onclick="event.stopPropagation()">
+    <div class="modal-title">⬆ 匯入排程</div>
+    <div class="form-hint" style="margin-bottom:14px">
+      Agent 規劃好的 JSON。題號 (<code>num</code>) 相同會更新（保留嘗試紀錄），否則新增。
+    </div>
+    <div class="form-group">
+      <label class="form-label">貼上 JSON</label>
+      <textarea id="importText" rows="10" style="font-family:'JetBrains Mono',monospace;font-size:11px;min-height:180px" placeholder='{"problems":[{"num":1,"title":"Two Sum","diff":"Easy","status":"todo","tags":["Array"],"nextDate":"2026-04-25"}]}'></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">或上傳檔案</label>
+      <input type="file" accept=".json" id="importFile" style="padding:6px">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeImport()">取消</button>
+      <button class="btn btn-primary" onclick="doImport()">匯入</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// STATUS MACHINE
+// ═══════════════════════════════════════════════════
+const STATUS_META = {
+  todo:            { label:'待寫',      interval: null, successTo:'first_time_done', reason:'🆕 待首次練習' },
+  first_time_done: { label:'初寫',      interval: 1,    successTo:'confident_1',     reason:'🔄 隔天驗收' },
+  unfamiliar:      { label:'不熟',      interval: 1,    successTo:'confident_1',     reason:'❗ 上次不熟，明天再戰' },
+  confident_1:     { label:'熟練 L1',  interval: 4,    successTo:'confident_2',     reason:'✓ L1 複習' },
+  confident_2:     { label:'熟練 L2',  interval: 10,   successTo:'confident_3',     reason:'✓ L2 複習' },
+  confident_3:     { label:'熟練 L3',  interval: 21,   successTo:'confident_4',     reason:'✓ L3 複習' },
+  confident_4:     { label:'已掌握 ✓', interval: null, successTo:'confident_4',     reason:'🏆 已掌握' },
+};
+
+function transitionStatus(current, success) {
+  if (current === 'todo') return 'first_time_done';
+  if (!success) return 'unfamiliar';
+  return STATUS_META[current]?.successTo || current;
+}
+
+function daysFromToday(days) {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function computeNextDate(status) {
+  const interval = STATUS_META[status]?.interval;
+  return interval != null ? daysFromToday(interval) : null;
+}
+
+// ═══════════════════════════════════════════════════
+// STORAGE + MIGRATION
+// ═══════════════════════════════════════════════════
+const LS_DB   = 'lc_db_v4';
+const LS_GH   = 'lc_gh_cfg';
+const LS_SHA  = 'lc_gh_sha';
+const LS_SYNC = 'lc_last_sync';
+
+function emptyDb() { return { problems: [], daily: {}, log: [] }; }
+
+function migrateFromV3() {
+  const raw = localStorage.getItem('lc_db_v3') || localStorage.getItem('lc_tracker_v2');
+  if (!raw) return null;
+  try {
+    const v3 = JSON.parse(raw);
+    const statusMap = { todo:'todo', done:'confident_1', review:'unfamiliar', struggle:'unfamiliar' };
+    const out = { problems: [], daily: {}, log: v3.log || [] };
+    (v3.problems || []).forEach(p => {
+      const newStatus = statusMap[p.status] || 'todo';
+      out.problems.push({
+        ...p,
+        status: newStatus,
+        nextDate: computeNextDate(newStatus),
+        log: (p.log || []).map(l => ({ ...l, status: statusMap[l.status] || l.status })),
+      });
+    });
+    Object.entries(v3.daily || {}).forEach(([date, d]) => {
+      out.daily[date] = { done: d.done || [] };
+    });
+    return out;
+  } catch { return null; }
+}
+
+function loadDb() {
+  const raw = localStorage.getItem(LS_DB);
+  if (raw) { try { return JSON.parse(raw); } catch {} }
+  const migrated = migrateFromV3();
+  if (migrated) { localStorage.setItem(LS_DB, JSON.stringify(migrated)); return migrated; }
+  return emptyDb();
+}
+function saveDb(d) { localStorage.setItem(LS_DB, JSON.stringify(d)); }
+function loadGh() { try { return JSON.parse(localStorage.getItem(LS_GH)) || {}; } catch { return {}; } }
+function saveGh(c) { localStorage.setItem(LS_GH, JSON.stringify(c)); }
+
+let db = loadDb();
+let gh = loadGh();
+let currentSha = localStorage.getItem(LS_SHA) || null;
+
+// ═══════════════════════════════════════════════════
+// GITHUB API
+// ═══════════════════════════════════════════════════
+function ghHeaders() { return { 'Authorization':'token '+gh.token, 'Content-Type':'application/json', 'Accept':'application/vnd.github.v3+json' }; }
+function ghUrl() { return `https://api.github.com/repos/${gh.owner}/${gh.repo}/contents/${gh.file}`; }
+function ghConfigured() { return !!(gh.token && gh.owner && gh.repo && gh.file); }
+
+async function ghRead() {
+  const url = ghUrl() + (gh.branch ? `?ref=${gh.branch}` : '');
+  const res = await fetch(url, { headers: ghHeaders() });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+  const json = await res.json();
+  currentSha = json.sha;
+  localStorage.setItem(LS_SHA, currentSha);
+  const raw = atob(json.content.replace(/\n/g, ''));
+  return JSON.parse(decodeURIComponent(escape(raw)));
+}
+
+async function ghWrite(data, message) {
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+  const body = { message, content, branch: gh.branch || 'main' };
+  if (currentSha) body.sha = currentSha;
+  const res = await fetch(ghUrl(), { method:'PUT', headers: ghHeaders(), body: JSON.stringify(body) });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `GitHub API ${res.status}`);
+  }
+  const json = await res.json();
+  currentSha = json.content.sha;
+  localStorage.setItem(LS_SHA, currentSha);
+  localStorage.setItem(LS_SYNC, new Date().toISOString());
+}
+
+function setSyncStatus(state, text) {
+  const el = document.getElementById('syncStatus');
+  el.className = 'sync-status ' + state;
+  document.getElementById('syncText').textContent = text;
+}
+
+async function syncNow(silent = false) {
+  if (!ghConfigured()) return;
+  setSyncStatus('syncing','同步中…');
+  try {
+    const remote = await ghRead();
+    if (remote) { db = remote; saveDb(db); }
+    await ghWrite(db, `🔄 sync ${today()}`);
+    setSyncStatus('ok','已同步 '+new Date().toLocaleTimeString('zh-TW'));
+    if (!silent) toast('已同步到 GitHub ✓');
+    updateStats(); renderCurrentTab();
+  } catch (e) {
+    setSyncStatus('error','同步失敗');
+    if (!silent) toast('同步失敗：'+e.message, 'error');
+    console.error(e);
+  }
+}
+
+async function persist(commitMsg) {
+  saveDb(db);
+  updateStats();
+  if (!ghConfigured()) return;
+  setSyncStatus('syncing','推送中…');
+  try {
+    await ghWrite(db, commitMsg || `update ${today()}`);
+    setSyncStatus('ok','已同步 '+new Date().toLocaleTimeString('zh-TW'));
+  } catch (e) {
+    setSyncStatus('error','推送失敗（已存本地）');
+    toast('GitHub 推送失敗，資料已暫存本地', 'warn');
+    console.error(e);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════
+function openSettings() {
+  document.getElementById('sToken').value  = gh.token  || '';
+  document.getElementById('sOwner').value  = gh.owner  || '';
+  document.getElementById('sRepo').value   = gh.repo   || '';
+  document.getElementById('sBranch').value = gh.branch || 'main';
+  document.getElementById('sFile').value   = gh.file   || 'data.json';
+  refreshGhStatusBlock();
+  document.getElementById('settingsOverlay').classList.add('open');
+}
+function closeSettings(e) {
+  if (e && e.target !== document.getElementById('settingsOverlay')) return;
+  document.getElementById('settingsOverlay').classList.remove('open');
+}
+function refreshGhStatusBlock() {
+  const block = document.getElementById('ghStatusBlock');
+  if (!ghConfigured()) { block.style.display = 'none'; return; }
+  block.style.display = 'block';
+  document.getElementById('ghStatusRepo').textContent = gh.owner + '/' + gh.repo;
+  document.getElementById('ghStatusFile').textContent = gh.file + ' @ ' + (gh.branch || 'main');
+  const t = localStorage.getItem(LS_SYNC);
+  document.getElementById('ghStatusTime').textContent = t ? new Date(t).toLocaleString('zh-TW') : '從未';
+}
+async function saveSettings() {
+  const cfg = {
+    token:  document.getElementById('sToken').value.trim(),
+    owner:  document.getElementById('sOwner').value.trim(),
+    repo:   document.getElementById('sRepo').value.trim(),
+    branch: document.getElementById('sBranch').value.trim() || 'main',
+    file:   document.getElementById('sFile').value.trim()   || 'data.json',
+  };
+  if (!cfg.token || !cfg.owner || !cfg.repo) { toast('請填寫 Token、帳號和 Repo', 'error'); return; }
+  gh = cfg; saveGh(gh);
+  currentSha = null; localStorage.removeItem(LS_SHA);
+  document.getElementById('settingsOverlay').classList.remove('open');
+  document.getElementById('syncBtn').style.display = '';
+  toast('設定已儲存，測試連線中…', 'warn');
+  await syncNow();
+}
+function clearGhConfig() {
+  if (!confirm('確定要清除 GitHub 設定嗎？資料仍保留在本地。')) return;
+  gh = {}; saveGh(gh); currentSha = null;
+  localStorage.removeItem(LS_SHA); localStorage.removeItem(LS_SYNC);
+  document.getElementById('settingsOverlay').classList.remove('open');
+  document.getElementById('syncBtn').style.display = 'none';
+  setSyncStatus('', '未設定 GitHub');
+  toast('已清除 GitHub 設定');
+}
+
+// ═══════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════
+function today() { return new Date().toISOString().slice(0, 10); }
+function uid()   { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function fmt(iso){ if (!iso) return '—'; return new Date(iso).toLocaleDateString('zh-TW'); }
+function escH(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function slugify(t){ return t.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); }
+function stLabel(s) { return STATUS_META[s]?.label || s; }
+
+function nextDateClass(d) {
+  if (!d) return 'nd-later';
+  const t = today();
+  if (d < t) return 'nd-overdue';
+  if (d === t) return 'nd-today';
+  const diff = (new Date(d) - new Date(t)) / 86400000;
+  if (diff <= 3) return 'nd-soon';
+  return 'nd-later';
+}
+function nextDateHuman(d) {
+  if (!d) return '—';
+  const t = today();
+  if (d === t) return '今日';
+  const diff = Math.round((new Date(d) - new Date(t)) / 86400000);
+  if (diff < 0) return `逾期 ${-diff}d`;
+  if (diff <= 14) return `+${diff}d`;
+  return d;
+}
+
+function toast(msg, type = '') {
+  const el = document.createElement('div');
+  el.className = 'toast' + (type ? ' '+type : '');
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+// ═══════════════════════════════════════════════════
+// ROUTING
+// ═══════════════════════════════════════════════════
+let currentTab = 'daily';
+function switchTab(name) {
+  currentTab = name;
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', ['daily','problems','heatmap'][i] === name);
+  });
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  renderCurrentTab();
+}
+function renderCurrentTab() {
+  if (currentTab === 'daily')    renderDaily();
+  if (currentTab === 'problems') renderTable();
+  if (currentTab === 'heatmap')  renderHeatmap();
+}
+
+// ═══════════════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════════════
+function updateStats() {
+  const p = db.problems;
+  const t = today();
+  const doneIds = (db.daily[t]?.done || []);
+  const todayDue = p.filter(x =>
+    x.status !== 'confident_4' &&
+    x.nextDate && x.nextDate <= t &&
+    !doneIds.includes(x.id)
+  ).length;
+
+  document.getElementById('statTotal').textContent    = p.length;
+  document.getElementById('statToday').textContent    = todayDue;
+  document.getElementById('statTodo').textContent     = p.filter(x => x.status === 'todo').length;
+  document.getElementById('statLearning').textContent = p.filter(x => x.status === 'first_time_done' || x.status === 'unfamiliar').length;
+  document.getElementById('statMastered').textContent = p.filter(x => x.status === 'confident_4').length;
+  document.getElementById('dailyCount').textContent   = todayDue + ' 題';
+}
+
+// ═══════════════════════════════════════════════════
+// DAILY
+// ═══════════════════════════════════════════════════
+function getDailyDone(date) {
+  if (!db.daily[date]) db.daily[date] = { done: [] };
+  if (!db.daily[date].done) db.daily[date].done = [];
+  return db.daily[date];
+}
+
+function getTodayQueue() {
+  const t = today();
+  const d = getDailyDone(t);
+  return db.problems.filter(p => {
+    if (p.status === 'confident_4') return false;
+    if (!p.nextDate) return false;
+    if (p.nextDate > t) return false;
+    if (d.done.includes(p.id)) return false;
+    return true;
+  }).sort((a, b) => {
+    if (a.nextDate !== b.nextDate) return a.nextDate.localeCompare(b.nextDate);
+    return a.num - b.num;
+  });
+}
+
+function renderDaily() {
+  const queue = getTodayQueue();
+  const t = today();
+  const d = getDailyDone(t);
+
+  const pick = document.getElementById('dailyPick');
+  pick.innerHTML = '<option value="">-- 選擇題目 --</option>';
+  const queueIds = queue.map(x => x.id);
+  db.problems.filter(p => !queueIds.includes(p.id) && !d.done.includes(p.id))
+    .sort((a, b) => a.num - b.num)
+    .forEach(p => { pick.innerHTML += `<option value="${p.id}">[${p.num}] ${escH(p.title)}</option>`; });
+
+  const grid = document.getElementById('dailyGrid');
+  if (!queue.length) {
+    grid.innerHTML = '<div class="empty-state"><div class="empty-icon">🎉</div><p>今日沒有待練習的題目！</p></div>';
+  } else {
+    grid.innerHTML = queue.map(p => {
+      const overdue = p.nextDate < t;
+      return `<div class="daily-card ${overdue ? 'overdue' : ''}">
+        <button class="check-btn" onclick="openAttempt('${p.id}')" title="記錄嘗試">✏</button>
+        <div class="daily-card-num">
+          <span>#${p.num}</span>
+          ${overdue ? `<span style="color:var(--accent2)">⚠ 逾期 ${Math.round((new Date(t)-new Date(p.nextDate))/86400000)}d</span>` : ''}
+        </div>
+        <div class="daily-card-title">${escH(p.title)}</div>
+        <div class="daily-card-footer">
+          <span class="badge badge-${p.diff.toLowerCase()}">${p.diff}</span>
+          <span class="badge badge-${p.status}">${stLabel(p.status)}</span>
+          <a class="lc-link" href="https://leetcode.com/problems/${slugify(p.title)}/" target="_blank">LC ↗</a>
+        </div>
+        <div class="daily-card-reason">${STATUS_META[p.status]?.reason || ''}</div>
+      </div>`;
+    }).join('');
+  }
+
+  const doneEl = document.getElementById('dailyDoneList');
+  if (!d.done.length) {
+    doneEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🏁</div><p>今日尚未完成任何題目</p></div>';
+  } else {
+    doneEl.innerHTML = `<table><thead><tr><th>#</th><th>題目</th><th>難度</th><th>新狀態</th><th>下次</th></tr></thead><tbody>` +
+      d.done.map(id => {
+        const p = db.problems.find(x => x.id === id);
+        if (!p) return '';
+        return `<tr>
+          <td style="color:var(--muted)">${p.num}</td>
+          <td style="font-weight:500">${escH(p.title)}</td>
+          <td><span class="badge badge-${p.diff.toLowerCase()}">${p.diff}</span></td>
+          <td><span class="badge badge-${p.status}">${stLabel(p.status)}</span></td>
+          <td class="${nextDateClass(p.nextDate)}">${nextDateHuman(p.nextDate)}</td>
+        </tr>`;
+      }).join('') + '</tbody></table>';
+  }
+}
+
+async function addToToday() {
+  const id = document.getElementById('dailyPick').value;
+  if (!id) return;
+  const p = db.problems.find(x => x.id === id);
+  if (!p) return;
+  p.nextDate = today();
+  p.updatedAt = new Date().toISOString();
+  await persist(`📌 schedule today: ${p.title}`);
+  renderDaily();
+  toast('已加入今日練習');
+}
+
+// ═══════════════════════════════════════════════════
+// TABLE
+// ═══════════════════════════════════════════════════
+function renderTable() {
+  const q  = document.getElementById('searchBox').value.toLowerCase();
+  const fs = document.getElementById('filterStatus').value;
+  const fd = document.getElementById('filterDiff').value;
+  let list = db.problems.filter(p => {
+    if (q && !String(p.num).includes(q) && !p.title.toLowerCase().includes(q)) return false;
+    if (fs && p.status !== fs) return false;
+    if (fd && p.diff !== fd) return false;
+    return true;
+  }).sort((a, b) => a.num - b.num);
+
+  const tbody = document.getElementById('problemsTbody');
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">📭</div><p>沒有符合的題目</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(p => `<tr>
+    <td style="color:var(--muted);font-size:12px">${p.num}</td>
+    <td>
+      <a class="lc-link" style="font-weight:500;font-size:13px;color:#e0eeff" href="https://leetcode.com/problems/${slugify(p.title)}/" target="_blank">${escH(p.title)}</a>
+      ${p.note ? `<div style="color:var(--muted);font-size:11px;margin-top:2px">${escH(p.note.slice(0, 60))}${p.note.length > 60 ? '…' : ''}</div>` : ''}
+    </td>
+    <td><span class="badge badge-${p.diff.toLowerCase()}">${p.diff}</span></td>
+    <td><span class="badge badge-${p.status}">${stLabel(p.status)}</span></td>
+    <td><div class="tags">${(p.tags || []).map(t => `<span class="tag">${escH(t)}</span>`).join('')}</div></td>
+    <td style="color:var(--muted)">${p.attempts || 0}</td>
+    <td class="${nextDateClass(p.nextDate)}">${nextDateHuman(p.nextDate)}</td>
+    <td style="color:var(--muted)">${fmt(p.updatedAt)}</td>
+    <td>
+      <div style="display:flex;gap:4px">
+        <button class="btn-icon" onclick="openAttempt('${p.id}')" title="記錄">✏</button>
+        <button class="btn-icon" onclick="openEdit('${p.id}')" title="編輯">⚙</button>
+        <button class="btn-icon danger" onclick="deleteProblem('${p.id}')" title="刪除">✕</button>
+      </div>
+    </td>
+  </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// ADD / EDIT
+// ═══════════════════════════════════════════════════
+let editingId = null;
+function openAdd() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = '新增題目';
+  ['fNum','fTitle','fTags','fNote','fNextDate'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('fDiff').value = 'Medium';
+  document.getElementById('fStatus').value = 'todo';
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('fNum').focus(), 50);
+}
+function openEdit(id) {
+  const p = db.problems.find(x => x.id === id);
+  if (!p) return;
+  editingId = id;
+  document.getElementById('modalTitle').textContent = '編輯題目';
+  document.getElementById('fNum').value = p.num;
+  document.getElementById('fTitle').value = p.title;
+  document.getElementById('fDiff').value = p.diff;
+  document.getElementById('fStatus').value = p.status;
+  document.getElementById('fTags').value = (p.tags || []).join(', ');
+  document.getElementById('fNote').value = p.note || '';
+  document.getElementById('fNextDate').value = p.nextDate || '';
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modalOverlay')) return;
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+async function saveForm() {
+  const num = parseInt(document.getElementById('fNum').value);
+  const title = document.getElementById('fTitle').value.trim();
+  const status = document.getElementById('fStatus').value;
+  const explicitNext = document.getElementById('fNextDate').value.trim();
+
+  if (!num || !title) { toast('請填寫題號和名稱', 'error'); return; }
+  if (!editingId && db.problems.find(p => p.num === num)) { toast('題號已存在', 'error'); return; }
+
+  const tags = document.getElementById('fTags').value.split(',').map(t => t.trim()).filter(Boolean);
+  const diff = document.getElementById('fDiff').value;
+  const note = document.getElementById('fNote').value.trim();
+  const now = new Date().toISOString();
+  const nextDate = explicitNext || computeNextDate(status);
+
+  let commitMsg;
+  if (editingId) {
+    const p = db.problems.find(x => x.id === editingId);
+    Object.assign(p, { num, title, diff, status, tags, note, nextDate, updatedAt: now });
+    commitMsg = `✏️ edit: #${num} ${title}`;
+  } else {
+    db.problems.push({
+      id: uid(), num, title, diff, status, tags, note, nextDate,
+      attempts: 0, createdAt: now, updatedAt: now, log: [],
+    });
+    commitMsg = `➕ add: #${num} ${title}`;
+  }
+
+  closeModal();
+  await persist(commitMsg);
+  renderCurrentTab();
+  toast(editingId ? '已更新' : '已新增 ✓');
+}
+async function deleteProblem(id) {
+  const p = db.problems.find(x => x.id === id);
+  if (!confirm(`確定要刪除「${p?.title}」？`)) return;
+  db.problems = db.problems.filter(x => x.id !== id);
+  await persist(`🗑️ delete: ${p?.title || id}`);
+  renderCurrentTab();
+  toast('已刪除');
+}
+
+// ═══════════════════════════════════════════════════
+// ATTEMPT
+// ═══════════════════════════════════════════════════
+let attemptId = null;
+function openAttempt(id) {
+  attemptId = id;
+  const p = db.problems.find(x => x.id === id);
+  if (!p) return;
+
+  document.getElementById('attemptTitle').textContent = `[${p.num}] ${p.title}`;
+  document.getElementById('aNote').value = '';
+
+  const info = document.getElementById('attemptStatusInfo');
+  const curNext = p.nextDate ? `${nextDateHuman(p.nextDate)} (${p.nextDate})` : '—';
+  const passTo = transitionStatus(p.status, true);
+  const failTo = transitionStatus(p.status, false);
+  const passInterval = STATUS_META[passTo].interval;
+  const failInterval = STATUS_META[failTo].interval;
+  info.innerHTML = `
+    <div class="status-info-row">
+      <span class="status-info-label">目前狀態</span>
+      <span><span class="badge badge-${p.status}">${stLabel(p.status)}</span> · 下次 ${curNext}</span>
+    </div>
+    ${p.status === 'todo' ? `
+    <div class="status-info-row">
+      <span class="status-info-label">完成後</span>
+      <span>→ <span class="badge badge-${passTo}">${stLabel(passTo)}</span> (+${passInterval} 天)</span>
+    </div>` : `
+    <div class="status-info-row">
+      <span class="status-info-label">✓ 寫出來</span>
+      <span>→ <span class="badge badge-${passTo}">${stLabel(passTo)}</span> ${passInterval ? `(+${passInterval} 天)` : '(已畢業)'}</span>
+    </div>
+    <div class="status-info-row">
+      <span class="status-info-label">✗ 沒寫出來</span>
+      <span>→ <span class="badge badge-${failTo}">${stLabel(failTo)}</span> (+${failInterval} 天)</span>
+    </div>`}
+  `;
+
+  const log = document.getElementById('attemptLog');
+  const entries = (p.log || []).slice().reverse();
+  log.innerHTML = entries.length ? entries.map(e => `<div class="attempt-item">
+    <span class="attempt-date">${e.date}</span>
+    <span class="badge badge-${e.status}" style="font-size:9px">${stLabel(e.status)}</span>
+    <span style="color:var(--muted);font-size:11px">${escH(e.note || '')}</span>
+  </div>`).join('') : '<div style="color:var(--muted)">尚無紀錄</div>';
+
+  const choice = document.getElementById('attemptChoice');
+  if (p.status === 'todo') {
+    choice.innerHTML = `<button class="btn-success" onclick="handleAttempt(true)">📝 記錄首次練習</button>`;
+  } else {
+    choice.innerHTML = `
+      <button class="btn-success" onclick="handleAttempt(true)">✓ 寫出來了</button>
+      <button class="btn-fail" onclick="handleAttempt(false)">✗ 沒寫出來</button>
+    `;
+  }
+
+  document.getElementById('attemptOverlay').classList.add('open');
+}
+function closeAttempt(e) {
+  if (e && e.target !== document.getElementById('attemptOverlay')) return;
+  document.getElementById('attemptOverlay').classList.remove('open');
+  attemptId = null;
+}
+
+async function handleAttempt(success) {
+  const p = db.problems.find(x => x.id === attemptId);
+  if (!p) return;
+  const note = document.getElementById('aNote').value.trim();
+  const t = today();
+
+  const prevStatus = p.status;
+  const newStatus = transitionStatus(prevStatus, success);
+  const newNextDate = computeNextDate(newStatus);
+
+  p.status = newStatus;
+  p.attempts = (p.attempts || 0) + 1;
+  p.updatedAt = new Date().toISOString();
+  p.nextDate = newNextDate;
+  if (!p.log) p.log = [];
+  p.log.push({ date: t, status: newStatus, note, success });
+
+  const d = getDailyDone(t);
+  if (!d.done.includes(p.id)) d.done.push(p.id);
+
+  if (!db.log) db.log = [];
+  db.log.push({ date: t, pid: p.id });
+
+  document.getElementById('attemptOverlay').classList.remove('open');
+  const label = success ? '寫出來了 ✓' : '沒寫出來 ✗';
+  await persist(`📝 #${p.num} ${p.title}: ${prevStatus} → ${newStatus}`);
+  updateStats(); renderCurrentTab();
+  toast(`${label} · ${stLabel(newStatus)}${newNextDate ? ` · 下次 ${nextDateHuman(newNextDate)}` : ''}`);
+  attemptId = null;
+}
+
+// ═══════════════════════════════════════════════════
+// IMPORT / EXPORT
+// ═══════════════════════════════════════════════════
+function openImport() {
+  document.getElementById('importText').value = '';
+  document.getElementById('importFile').value = '';
+  document.getElementById('importOverlay').classList.add('open');
+}
+function closeImport(e) {
+  if (e && e.target !== document.getElementById('importOverlay')) return;
+  document.getElementById('importOverlay').classList.remove('open');
+}
+
+async function doImport() {
+  let rawText = document.getElementById('importText').value.trim();
+  const file = document.getElementById('importFile').files[0];
+  if (!rawText && file) rawText = await file.text();
+  if (!rawText) { toast('請貼上 JSON 或上傳檔案', 'error'); return; }
+
+  let data;
+  try { data = JSON.parse(rawText); }
+  catch (e) { toast('JSON 格式錯誤：' + e.message, 'error'); return; }
+
+  const incoming = Array.isArray(data) ? data : (data.problems || []);
+  if (!Array.isArray(incoming) || !incoming.length) {
+    toast('JSON 裡找不到 problems 陣列', 'error'); return;
+  }
+
+  const now = new Date().toISOString();
+  let added = 0, updated = 0;
+
+  incoming.forEach(entry => {
+    if (!entry || typeof entry !== 'object') return;
+    const num = parseInt(entry.num);
+    if (!num) return;
+
+    let existing = null;
+    if (entry.id) existing = db.problems.find(p => p.id === entry.id);
+    if (!existing) existing = db.problems.find(p => p.num === num);
+
+    const status = entry.status && STATUS_META[entry.status] ? entry.status : (existing?.status || 'todo');
+    const nextDate = entry.nextDate || (existing ? existing.nextDate : computeNextDate(status));
+
+    if (existing) {
+      if (entry.title !== undefined) existing.title = String(entry.title);
+      if (entry.diff !== undefined)  existing.diff  = entry.diff;
+      if (entry.status !== undefined) existing.status = status;
+      if (entry.tags !== undefined)  existing.tags  = Array.isArray(entry.tags) ? entry.tags : [];
+      if (entry.note !== undefined)  existing.note  = String(entry.note || '');
+      existing.nextDate  = nextDate;
+      existing.updatedAt = now;
+      updated++;
+    } else {
+      db.problems.push({
+        id: entry.id || uid(),
+        num,
+        title: String(entry.title || '').trim() || `#${num}`,
+        diff: entry.diff || 'Medium',
+        status,
+        tags: Array.isArray(entry.tags) ? entry.tags : [],
+        note: String(entry.note || ''),
+        nextDate,
+        attempts: entry.attempts || 0,
+        createdAt: entry.createdAt || now,
+        updatedAt: now,
+        log: Array.isArray(entry.log) ? entry.log : [],
+      });
+      added++;
+    }
+  });
+
+  // Optional: merge daily schedule if provided (agent may pre-schedule `done` — we only merge done)
+  if (data.daily && typeof data.daily === 'object') {
+    Object.entries(data.daily).forEach(([date, v]) => {
+      if (!v || typeof v !== 'object') return;
+      const bucket = getDailyDone(date);
+      if (Array.isArray(v.done)) {
+        v.done.forEach(pid => { if (!bucket.done.includes(pid)) bucket.done.push(pid); });
+      }
+    });
+  }
+
+  closeImport();
+  await persist(`⬆️ import: +${added} new, ${updated} updated`);
+  renderCurrentTab();
+  toast(`匯入完成：新增 ${added}、更新 ${updated}`);
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `lc-tracker-${today()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  toast('已匯出 JSON ✓');
+}
+
+// ═══════════════════════════════════════════════════
+// HEATMAP
+// ═══════════════════════════════════════════════════
+function renderHeatmap() {
+  const grid = document.getElementById('heatmapGrid');
+  const countMap = {};
+  (db.log || []).forEach(e => { countMap[e.date] = (countMap[e.date] || 0) + 1; });
+  const weeks = 18;
+  const start = new Date(); start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - weeks * 7 + 1);
+  start.setDate(start.getDate() - start.getDay());
+  let html = '';
+  for (let w = 0; w < weeks; w++) {
+    html += '<div class="heatmap-col">';
+    for (let d = 0; d < 7; d++) {
+      const dt = new Date(start); dt.setDate(dt.getDate() + w * 7 + d);
+      const iso = dt.toISOString().slice(0, 10);
+      const cnt = Math.min(countMap[iso] || 0, 5);
+      html += `<div class="heatmap-cell" data-count="${cnt}" title="${iso}: ${countMap[iso] || 0} 題"></div>`;
+    }
+    html += '</div>';
+  }
+  grid.innerHTML = html;
+
+  const tagCount = {};
+  db.problems.forEach(p => (p.tags || []).forEach(t => { tagCount[t] = (tagCount[t] || 0) + 1; }));
+  const tags = Object.entries(tagCount).sort((a, b) => b[1] - a[1]);
+  document.getElementById('tagStats').innerHTML = tags.length ? tags.map(([t, c]) => `
+    <div class="stat-card" style="padding:14px 16px">
+      <div class="stat-num" style="font-size:22px;color:var(--accent4)">${c}</div>
+      <div class="stat-label">${escH(t)}</div>
+    </div>`).join('') : '<div style="color:var(--muted)">尚無標籤資料</div>';
+}
+
+// ═══════════════════════════════════════════════════
+// KEYBOARD
+// ═══════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.overlay.open').forEach(o => o.classList.remove('open'));
+  }
+  if ((e.metaKey || e.ctrlKey) && e.key === 'n' && !document.querySelector('.overlay.open')) {
+    e.preventDefault(); openAdd();
+  }
+  if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+    e.preventDefault(); syncNow();
+  }
+});
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+(async function init() {
+  updateStats();
+  renderDaily();
+
+  if (ghConfigured()) {
+    document.getElementById('syncBtn').style.display = '';
+    setSyncStatus('syncing', '連線中…');
+    try {
+      const remote = await ghRead();
+      if (remote) { db = remote; saveDb(db); }
+      setSyncStatus('ok', '已同步 ' + new Date().toLocaleTimeString('zh-TW'));
+      updateStats(); renderCurrentTab();
+    } catch (e) {
+      setSyncStatus('error', 'GitHub 連線失敗');
+      console.error(e);
+    }
+  }
+})();
+</script>
+</body>
+</html>
