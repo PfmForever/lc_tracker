@@ -731,7 +731,9 @@ function renderDaily() {
         <button class="check-btn" onclick="openAttempt('${p.id}')" title="記錄嘗試">✏</button>
         <div class="daily-card-num">
           <span>#${p.num}</span>
-          ${overdue ? `<span style="color:var(--accent2)">⚠ 逾期 ${Math.round((new Date(t)-new Date(p.nextDate))/86400000)}d</span>` : ''}
+          <span style="color:${overdue ? 'var(--accent2)' : 'var(--muted)'}">
+            ${overdue ? `⚠ ${p.nextDate} (逾期 ${Math.round((new Date(t)-new Date(p.nextDate))/86400000)}d)` : p.nextDate}
+          </span>
         </div>
         <div class="daily-card-title">${escH(p.title)}</div>
         <div class="daily-card-footer">
