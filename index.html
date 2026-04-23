@@ -286,38 +286,66 @@
 
 <div class="overlay" id="settingsOverlay" onclick="closeSettings(event)">
   <div class="modal modal-wide" onclick="event.stopPropagation()">
-    <div class="modal-title">⚙ GitHub 同步設定</div>
-    <div class="gh-status-block" id="ghStatusBlock" style="display:none">
-      <div class="gh-row">
-        <span class="gh-label">Repo</span><span class="gh-val" id="ghStatusRepo">—</span>
-        <span class="gh-label">資料檔案</span><span class="gh-val" id="ghStatusFile">—</span>
-        <span class="gh-label">最後同步</span><span class="gh-val" id="ghStatusTime">—</span>
+    <div class="modal-title">⚙ 設定</div>
+    <div class="tabs" style="margin-bottom:20px">
+      <div class="tab active" id="stab-gh" onclick="switchSettingsTab('gh')">GitHub 同步</div>
+      <div class="tab" id="stab-intervals" onclick="switchSettingsTab('intervals')">複習間隔</div>
+    </div>
+
+    <div id="spanel-gh">
+      <div class="gh-status-block" id="ghStatusBlock" style="display:none">
+        <div class="gh-row">
+          <span class="gh-label">Repo</span><span class="gh-val" id="ghStatusRepo">—</span>
+          <span class="gh-label">資料檔案</span><span class="gh-val" id="ghStatusFile">—</span>
+          <span class="gh-label">最後同步</span><span class="gh-val" id="ghStatusTime">—</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Personal Access Token</label>
+        <input type="password" id="sToken" placeholder="ghp_xxxx 或 github_pat_xxxx">
+        <div class="form-hint">
+          GitHub → Settings → Developer settings → Personal access tokens → Fine-grained<br>
+          需要 <code>Contents: Read and write</code> 權限
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">GitHub 帳號</label><input type="text" id="sOwner" placeholder="your-username"></div>
+        <div class="form-group"><label class="form-label">Repo 名稱</label><input type="text" id="sRepo" placeholder="lc-tracker"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Branch</label><input type="text" id="sBranch" placeholder="main"></div>
+        <div class="form-group"><label class="form-label">資料檔案路徑</label><input type="text" id="sFile" placeholder="data.json"></div>
+      </div>
+      <hr class="divider">
+      <div style="color:var(--muted);font-size:11px;line-height:1.7">
+        Token 僅儲存在瀏覽器 <code>localStorage</code>。每次更新都會自動 commit 到你的 repo。
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost btn-sm" onclick="clearGhConfig()" style="margin-right:auto;color:var(--accent2);border-color:rgba(255,107,107,.3)">清除設定</button>
+        <button class="btn btn-ghost" onclick="closeSettings()">取消</button>
+        <button class="btn btn-primary" onclick="saveSettings()">儲存並測試</button>
       </div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Personal Access Token</label>
-      <input type="password" id="sToken" placeholder="ghp_xxxx 或 github_pat_xxxx">
-      <div class="form-hint">
-        GitHub → Settings → Developer settings → Personal access tokens → Fine-grained<br>
-        需要 <code>Contents: Read and write</code> 權限
+
+    <div id="spanel-intervals" style="display:none">
+      <div style="color:var(--muted);font-size:11px;margin-bottom:16px;line-height:1.7">
+        每個熟練度完成後，下次複習間隔（天）。設定會存入 <code>data.json</code>。
       </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">GitHub 帳號</label><input type="text" id="sOwner" placeholder="your-username"></div>
-      <div class="form-group"><label class="form-label">Repo 名稱</label><input type="text" id="sRepo" placeholder="lc-tracker"></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Branch</label><input type="text" id="sBranch" placeholder="main"></div>
-      <div class="form-group"><label class="form-label">資料檔案路徑</label><input type="text" id="sFile" placeholder="data.json"></div>
-    </div>
-    <hr class="divider">
-    <div style="color:var(--muted);font-size:11px;line-height:1.7">
-      Token 僅儲存在瀏覽器 <code>localStorage</code>。每次更新都會自動 commit 到你的 repo。
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost btn-sm" onclick="clearGhConfig()" style="margin-right:auto;color:var(--accent2);border-color:rgba(255,107,107,.3)">清除設定</button>
-      <button class="btn btn-ghost" onclick="closeSettings()">取消</button>
-      <button class="btn btn-primary" onclick="saveSettings()">儲存並測試</button>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">初寫 → 隔天驗收</label><input type="number" id="iv-first_time_done" min="1" max="365"></div>
+        <div class="form-group"><label class="form-label">不熟 → 再練</label><input type="number" id="iv-unfamiliar" min="1" max="365"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">熟練 L1</label><input type="number" id="iv-confident_1" min="1" max="365"></div>
+        <div class="form-group"><label class="form-label">熟練 L2</label><input type="number" id="iv-confident_2" min="1" max="365"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="max-width:50%"><label class="form-label">熟練 L3</label><input type="number" id="iv-confident_3" min="1" max="365"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeSettings()">取消</button>
+        <button class="btn btn-primary" onclick="saveIntervals()">儲存間隔</button>
+      </div>
     </div>
   </div>
 </div>
@@ -427,7 +455,7 @@ function daysFromToday(days) {
 }
 
 function computeNextDate(status) {
-  const interval = STATUS_META[status]?.interval;
+  const interval = (db?.intervals || DEFAULT_INTERVALS)[status] ?? STATUS_META[status]?.interval;
   return interval != null ? daysFromToday(interval) : null;
 }
 
@@ -439,7 +467,8 @@ const LS_GH   = 'lc_gh_cfg';
 const LS_SHA  = 'lc_gh_sha';
 const LS_SYNC = 'lc_last_sync';
 
-function emptyDb() { return { problems: [], daily: {}, log: [] }; }
+const DEFAULT_INTERVALS = { first_time_done: 1, unfamiliar: 1, confident_1: 4, confident_2: 10, confident_3: 21 };
+function emptyDb() { return { problems: [], daily: {}, log: [], intervals: { ...DEFAULT_INTERVALS } }; }
 
 function migrateFromV3() {
   const raw = localStorage.getItem('lc_db_v3') || localStorage.getItem('lc_tracker_v2');
@@ -554,14 +583,36 @@ async function persist(commitMsg) {
 // ═══════════════════════════════════════════════════
 // SETTINGS
 // ═══════════════════════════════════════════════════
+function switchSettingsTab(name) {
+  ['gh','intervals'].forEach(t => {
+    document.getElementById('stab-'+t).classList.toggle('active', t === name);
+    document.getElementById('spanel-'+t).style.display = t === name ? '' : 'none';
+  });
+}
 function openSettings() {
   document.getElementById('sToken').value  = gh.token  || '';
   document.getElementById('sOwner').value  = gh.owner  || '';
   document.getElementById('sRepo').value   = gh.repo   || '';
   document.getElementById('sBranch').value = gh.branch || 'main';
   document.getElementById('sFile').value   = gh.file   || 'data.json';
+  const iv = db.intervals || DEFAULT_INTERVALS;
+  ['first_time_done','unfamiliar','confident_1','confident_2','confident_3'].forEach(k => {
+    document.getElementById('iv-'+k).value = iv[k] ?? DEFAULT_INTERVALS[k];
+  });
+  switchSettingsTab('gh');
   refreshGhStatusBlock();
   document.getElementById('settingsOverlay').classList.add('open');
+}
+async function saveIntervals() {
+  const iv = {};
+  ['first_time_done','unfamiliar','confident_1','confident_2','confident_3'].forEach(k => {
+    const v = parseInt(document.getElementById('iv-'+k).value);
+    iv[k] = isNaN(v) || v < 1 ? DEFAULT_INTERVALS[k] : v;
+  });
+  db.intervals = iv;
+  document.getElementById('settingsOverlay').classList.remove('open');
+  await persist('⚙️ update review intervals');
+  toast('複習間隔已儲存 ✓');
 }
 function closeSettings(e) {
   if (e && e.target !== document.getElementById('settingsOverlay')) return;
@@ -609,6 +660,7 @@ function today() { const d = new Date(); return `${d.getFullYear()}-${String(d.g
 function uid()   { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 function normalizeDb(d) {
   if (!d.daily) d.daily = {};
+  if (!d.intervals) d.intervals = { ...DEFAULT_INTERVALS };
   (d.problems || []).forEach(p => { if (!p.id) p.id = uid(); });
   return d;
 }
