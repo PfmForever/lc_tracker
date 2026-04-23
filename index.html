@@ -361,15 +361,7 @@
     </div>
     <div class="form-group"><label class="form-label">題目名稱</label><input type="text" id="fTitle" placeholder="Two Sum"></div>
     <div class="form-group"><label class="form-label">狀態</label>
-      <select id="fStatus">
-        <option value="todo">待寫 Todo</option>
-        <option value="first_time_done">初寫 (+1 天)</option>
-        <option value="unfamiliar">不熟 (+1 天)</option>
-        <option value="confident_1">熟練 L1 (+4 天)</option>
-        <option value="confident_2">熟練 L2 (+10 天)</option>
-        <option value="confident_3">熟練 L3 (+21 天)</option>
-        <option value="confident_4">已掌握</option>
-      </select>
+      <select id="fStatus"></select>
       <div class="form-hint">存檔時會根據狀態自動計算 nextDate（除非下方明確指定）</div>
     </div>
     <div class="form-group">
@@ -873,13 +865,28 @@ function renderTable() {
 // ═══════════════════════════════════════════════════
 // ADD / EDIT
 // ═══════════════════════════════════════════════════
+function populateStatusSelect(selectedValue) {
+  const iv = db.intervals || DEFAULT_INTERVALS;
+  const opts = [
+    ['todo',            '待寫 Todo'],
+    ['first_time_done', `初寫 (+${iv.first_time_done} 天)`],
+    ['unfamiliar',      `不熟 (+${iv.unfamiliar} 天)`],
+    ['confident_1',     `熟練 L1 (+${iv.confident_1} 天)`],
+    ['confident_2',     `熟練 L2 (+${iv.confident_2} 天)`],
+    ['confident_3',     `熟練 L3 (+${iv.confident_3} 天)`],
+    ['confident_4',     '已掌握'],
+  ];
+  const sel = document.getElementById('fStatus');
+  sel.innerHTML = opts.map(([v, t]) => `<option value="${v}"${v === selectedValue ? ' selected' : ''}>${t}</option>`).join('');
+}
+
 let editingId = null;
 function openAdd() {
   editingId = null;
   document.getElementById('modalTitle').textContent = '新增題目';
   ['fNum','fTitle','fTags','fNote','fNextDate'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('fDiff').value = 'Medium';
-  document.getElementById('fStatus').value = 'todo';
+  populateStatusSelect('todo');
   document.getElementById('modalOverlay').classList.add('open');
   setTimeout(() => document.getElementById('fNum').focus(), 50);
 }
@@ -891,7 +898,7 @@ function openEdit(id) {
   document.getElementById('fNum').value = p.num;
   document.getElementById('fTitle').value = p.title;
   document.getElementById('fDiff').value = p.diff;
-  document.getElementById('fStatus').value = p.status;
+  populateStatusSelect(p.status);
   document.getElementById('fTags').value = (p.tags || []).join(', ');
   document.getElementById('fNote').value = p.note || '';
   document.getElementById('fNextDate').value = p.nextDate || '';
@@ -959,8 +966,9 @@ function openAttempt(id) {
   const curNext = p.nextDate ? `${nextDateHuman(p.nextDate)} (${p.nextDate})` : '—';
   const passTo = transitionStatus(p.status, true);
   const failTo = transitionStatus(p.status, false);
-  const passInterval = STATUS_META[passTo].interval;
-  const failInterval = STATUS_META[failTo].interval;
+  const iv = db.intervals || DEFAULT_INTERVALS;
+  const passInterval = iv[passTo] ?? STATUS_META[passTo].interval;
+  const failInterval = iv[failTo] ?? STATUS_META[failTo].interval;
   info.innerHTML = `
     <div class="status-info-row">
       <span class="status-info-label">目前狀態</span>
