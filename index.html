@@ -779,7 +779,10 @@ function renderDaily() {
             ${overdue ? `⚠ ${p.nextDate} (逾期 ${Math.round((new Date(t)-new Date(p.nextDate))/86400000)}d)` : p.nextDate}
           </span>
         </div>
-        <div class="daily-card-title">${escH(p.title)}</div>
+        <div class="daily-card-title" style="display:flex;align-items:center;gap:6px">
+          <a class="lc-link" style="color:#fff;font-size:14px;font-weight:500;text-decoration:none" href="https://leetcode.com/problems/${slugify(p.title)}/" target="_blank">${escH(p.title)}</a>
+          <button class="btn-icon" onclick="event.stopPropagation();openEdit('${p.id}')" title="編輯題目" style="font-size:13px;padding:2px 5px;flex-shrink:0">⚙</button>
+        </div>
         <div class="daily-card-footer">
           <span class="badge badge-${p.diff.toLowerCase()}">${p.diff}</span>
           <span class="badge badge-${p.status}">${stLabel(p.status)}</span>
@@ -800,7 +803,12 @@ function renderDaily() {
         if (!p) return '';
         return `<tr>
           <td style="color:var(--muted)">${p.num}</td>
-          <td style="font-weight:500">${escH(p.title)}</td>
+          <td style="font-weight:500">
+            <div style="display:flex;align-items:center;gap:6px">
+              <a class="lc-link" style="color:#e0eeff;font-weight:500;text-decoration:none" href="https://leetcode.com/problems/${slugify(p.title)}/" target="_blank">${escH(p.title)}</a>
+              <button class="btn-icon" onclick="openEdit('${p.id}')" title="編輯題目" style="font-size:12px;padding:2px 5px;flex-shrink:0">⚙</button>
+            </div>
+          </td>
           <td><span class="badge badge-${p.diff.toLowerCase()}">${p.diff}</span></td>
           <td><span class="badge badge-${p.status}">${stLabel(p.status)}</span></td>
           <td class="${nextDateClass(p.nextDate)}">${nextDateHuman(p.nextDate)}</td>
