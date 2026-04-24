@@ -61,10 +61,12 @@
 | `todo`           | 待寫       | 還沒寫過                | 無       |
 | `first_time_done`| 初寫       | 第一次寫完，待隔天驗收   | +1 天    |
 | `unfamiliar`     | 不熟       | 寫過但還卡住            | +1 天    |
-| `confident_1`    | 熟練 L1    | 寫對一次                | +4 天    |
+| `confident_1`    | 熟練 L1    | 寫對一次                | +5 天    |
 | `confident_2`    | 熟練 L2    | 寫對兩次                | +10 天   |
 | `confident_3`    | 熟練 L3    | 寫對三次                | +21 天   |
 | `confident_4`    | 已掌握 ✓   | 畢業，不自動排程        | 無       |
+
+> **間隔可自訂**：⚙ 設定 → 複習間隔，修改後存於 `data.json` 的 `intervals` 欄位，並優先於上表預設值。Agent 規劃時建議先讀取 `data.json` 裡的 `intervals` 物件以確保計算正確。
 
 ### 狀態轉移（app 自己做，agent 規劃時參考）
 
@@ -95,29 +97,58 @@ App 匯入時對每個 entry：
 
 ## Agent Prompt 範本
 
-> 我有一個 LeetCode 練習追蹤器，以下是我目前的 `data.json`：
-> ```
-> [貼上 data.json]
-> ```
->
-> 條件：
-> - 面試日期：2026-06-01
-> - 每天最多 N 題
-> - 新題（status=`todo`）依 [topic/順序] 安排首刷日
-> - `unfamiliar` / `first_time_done` 間隔短（1-2 天）
-> - `confident_1..3` 依 SM-2 間隔（4 / 10 / 21 天）
-> - `confident_4` 面試前一週再複習一輪
->
-> 請輸出以下格式的 JSON（遵循 `IMPORT_SCHEMA.md`）：
-> ```json
-> {
->   "problems": [
->     { "num": 1, "nextDate": "2026-04-25" },
->     { "num": 15, "nextDate": "2026-04-26" },
->     { "num": 200, "title": "Number of Islands", "diff": "Medium", "status": "todo", "tags": ["BFS","DFS"], "nextDate": "2026-05-02" }
->   ]
-> }
-> ```
+```
+You are my LeetCode training planner. I will give you my current tracker data (JSON) and you will design the next batch of problems + a daily schedule, then output a JSON I can import directly.
+
+## My Tracker Data Schema
+
+The data.json has this top-level structure:
+  - problems[]: all tracked problems
+  - daily{}: { "YYYY-MM-DD": { "done": [id, ...] } }
+  - log[]: { "date": "YYYY-MM-DD", "pid": id }
+  - intervals{}: review spacing in days — READ THIS before calculating nextDate
+    e.g. { "first_time_done": 1, "unfamiliar": 1, "confident_1": 5, "confident_2": 10, "confident_3": 21 }
+
+Status machine:
+  todo → (first attempt) → first_time_done
+  first_time_done → (success) → confident_1  |  (fail) → unfamiliar
+  unfamiliar      → (success) → confident_1  |  (fail) → unfamiliar
+  confident_1     → (success) → confident_2  |  (fail) → unfamiliar
+  confident_2     → (success) → confident_3  |  (fail) → unfamiliar
+  confident_3     → (success) → confident_4  |  (fail) → unfamiliar
+  confident_4 = mastered, no more scheduling needed
+
+nextDate = today + intervals[newStatus] after each attempt.
+
+## My Current Data
+
+[貼上 data.json]
+
+## What I need from you
+
+### 1. Analysis (brief)
+- Topics covered and mastery level
+- Weak spots (unfamiliar / repeated failures)
+- Current daily load vs. capacity
+
+### 2. New problems to add
+Design the next 1–2 weeks. Rules:
+- Build on existing topics progressively
+- Easy warm-up → Medium(s) → 1 Hard per week
+- Include: num, title, diff, tags, note (key insight), nextDate (first attempt day)
+- Do NOT include id, status, attempts, log for new problems
+
+### 3. Schedule adjustments for existing problems
+Only include problems where you're actually changing nextDate (bring id for existing ones).
+
+### 4. Output — single importable JSON
+{
+  "problems": [
+    // new problems (no id) + existing problems with changed nextDate (include their id)
+  ]
+}
+Do NOT re-output the full problem list — only new entries and changed entries.
+```
 
 ---
 
