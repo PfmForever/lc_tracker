@@ -187,8 +187,9 @@
   .cal-cell.cal-other .cal-cell-num{color:var(--muted)}
   .cal-dots{display:flex;gap:3px;flex-wrap:wrap;margin-top:4px}
   .cal-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
-  .cal-dot-due{background:var(--accent3)}
-  .cal-dot-done{background:var(--accent)}
+  .cal-dot-easy{background:var(--easy)}
+  .cal-dot-medium{background:#ff9f43}
+  .cal-dot-hard{background:var(--accent2)}
   .cal-detail{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
   .cal-detail-date{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:#fff;margin-bottom:16px}
   .cal-sec-label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
@@ -1247,13 +1248,15 @@ function calCellHtml(iso, dayNum, otherMonth, dueMap, doneMap, t) {
   if (isToday)    cls += ' cal-today';
   if (isSelected) cls += ' cal-selected';
 
-  // dots: up to 5 due (yellow) + up to 5 done (green)
-  const dueDots  = due.slice(0,5).map(() => `<div class="cal-dot cal-dot-due"></div>`).join('');
-  const doneDots = done.slice(0,5).map(() => `<div class="cal-dot cal-dot-done"></div>`).join('');
+  // dots: one per completed problem, colored by difficulty
+  const doneProblems = done.map(id => db.problems.find(p => p.id === id)).filter(Boolean);
+  const dots = doneProblems.slice(0, 8).map(p =>
+    `<div class="cal-dot cal-dot-${p.diff.toLowerCase()}"></div>`
+  ).join('');
 
   return `<div class="${cls}" onclick="calSelectDay('${iso}')">
     <div class="cal-cell-num">${dayNum}</div>
-    <div class="cal-dots">${dueDots}${doneDots}</div>
+    <div class="cal-dots">${dots}</div>
   </div>`;
 }
 
@@ -1299,19 +1302,20 @@ function renderCalDetail() {
     html += `<div style="color:var(--muted);font-size:12px;padding:8px 0">無排程題目</div>`;
   }
 
-  // Done problems (that are done but not in due list)
-  const extraDone = done.filter(p => p.nextDate !== calSelected);
-  if (extraDone.length) {
-    html += `<div class="cal-sec-label" style="margin-top:16px">✅ 額外完成（${extraDone.length}）</div>`;
-    html += `<div class="cal-item-list">` + extraDone.map(p => `<div class="cal-item">
+  // All problems completed that day
+  html += `<div class="cal-sec-label" style="margin-top:16px">✅ 當日完成（${done.length}）</div>`;
+  if (done.length) {
+    html += `<div class="cal-item-list">` + done.map(p => `<div class="cal-item">
       <span class="cal-item-num">#${p.num}</span>
       <span class="cal-item-title">
-        <a class="lc-link" style="color:var(--muted)" href="https://leetcode.com/problems/${slugify(p.title)}/" target="_blank">${escH(p.title)}</a>
+        <a class="lc-link" style="color:#e0eeff" href="https://leetcode.com/problems/${slugify(p.title)}/" target="_blank">${escH(p.title)}</a>
       </span>
       <span class="badge badge-${p.diff.toLowerCase()}">${p.diff}</span>
       <span class="badge badge-${p.status}">${stLabel(p.status)}</span>
       <button class="btn-icon" onclick="openEdit('${p.id}')" title="編輯">⚙</button>
     </div>`).join('') + `</div>`;
+  } else {
+    html += `<div style="color:var(--muted);font-size:12px;padding:8px 0">當日無完成紀錄</div>`;
   }
 
   el.innerHTML = html;
