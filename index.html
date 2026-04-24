@@ -183,6 +183,33 @@
   ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
   ::-webkit-scrollbar-thumb:hover{background:var(--muted)}
 
+  .cal-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:22px;margin-bottom:20px}
+  .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  .cal-month{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:#fff}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .cal-dow{text-align:center;color:var(--muted);font-size:10px;letter-spacing:.06em;padding:4px 2px 10px}
+  .cal-cell{min-height:58px;border-radius:8px;border:1px solid transparent;padding:7px 8px;cursor:pointer;transition:all .15s}
+  .cal-cell:hover:not(.cal-empty){border-color:var(--border);background:rgba(255,255,255,.03)}
+  .cal-cell.cal-selected{border-color:var(--accent)!important;background:rgba(0,229,160,.08)}
+  .cal-cell.cal-today{border-color:rgba(107,206,255,.3)}
+  .cal-cell.cal-today .cal-cell-num{color:var(--accent4);font-weight:700}
+  .cal-cell.cal-empty{cursor:default;min-height:0}
+  .cal-cell-num{font-size:12px;color:var(--text);line-height:1;margin-bottom:5px}
+  .cal-cell.cal-other .cal-cell-num{color:var(--muted)}
+  .cal-dots{display:flex;gap:3px;flex-wrap:wrap;margin-top:4px}
+  .cal-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+  .cal-dot-due{background:var(--accent3)}
+  .cal-dot-done{background:var(--accent)}
+  .cal-detail{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+  .cal-detail-date{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:#fff;margin-bottom:16px}
+  .cal-sec-label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+  .cal-sec-label+.cal-sec-label,.cal-item-list+.cal-sec-label{margin-top:16px}
+  .cal-item-list{display:flex;flex-direction:column;gap:0}
+  .cal-item{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border);flex-wrap:wrap}
+  .cal-item:last-child{border-bottom:none}
+  .cal-item-num{color:var(--muted);font-size:11px;min-width:32px}
+  .cal-item-title{flex:1;font-size:13px}
+
   @media(max-width:768px){
     .stats-bar{grid-template-columns:repeat(3,1fr)}
     .form-row{grid-template-columns:1fr}
@@ -217,7 +244,7 @@
   <div class="tabs">
     <div class="tab active" onclick="switchTab('daily')">📅 今日練習</div>
     <div class="tab" onclick="switchTab('problems')">📋 題目列表</div>
-    <div class="tab" onclick="switchTab('heatmap')">📊 進度圖</div>
+    <div class="tab" onclick="switchTab('heatmap')">🗓 行事曆</div>
   </div>
 
   <div class="section active" id="tab-daily">
@@ -275,12 +302,15 @@
   </div>
 
   <div class="section" id="tab-heatmap">
-    <div class="heatmap-wrap">
-      <div class="heatmap-title">練習熱度圖（近18週）</div>
-      <div id="heatmapGrid" class="heatmap"></div>
+    <div class="cal-wrap">
+      <div class="cal-nav">
+        <button class="btn btn-ghost btn-sm" onclick="calPrev()">← 上個月</button>
+        <div class="cal-month" id="calMonthTitle"></div>
+        <button class="btn btn-ghost btn-sm" onclick="calNext()">下個月 →</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
     </div>
-    <div class="section-header"><div class="section-title">題目類型分布</div></div>
-    <div id="tagStats" class="daily-grid"></div>
+    <div class="cal-detail" id="calDetail" style="display:none"></div>
   </div>
 </div>
 
@@ -704,7 +734,7 @@ function switchTab(name) {
 function renderCurrentTab() {
   if (currentTab === 'daily')    renderDaily();
   if (currentTab === 'problems') renderTable();
-  if (currentTab === 'heatmap')  renderHeatmap();
+  if (currentTab === 'heatmap')  renderCalendar();
 }
 
 // ═══════════════════════════════════════════════════
@@ -1156,37 +1186,146 @@ function exportData() {
 }
 
 // ═══════════════════════════════════════════════════
-// HEATMAP
+// CALENDAR
 // ═══════════════════════════════════════════════════
-function renderHeatmap() {
-  const grid = document.getElementById('heatmapGrid');
-  const countMap = {};
-  (db.log || []).forEach(e => { countMap[e.date] = (countMap[e.date] || 0) + 1; });
-  const weeks = 18;
-  const start = new Date(); start.setHours(0, 0, 0, 0);
-  start.setDate(start.getDate() - weeks * 7 + 1);
-  start.setDate(start.getDate() - start.getDay());
-  let html = '';
-  for (let w = 0; w < weeks; w++) {
-    html += '<div class="heatmap-col">';
-    for (let d = 0; d < 7; d++) {
-      const dt = new Date(start); dt.setDate(dt.getDate() + w * 7 + d);
-      const iso = dt.toISOString().slice(0, 10);
-      const cnt = Math.min(countMap[iso] || 0, 5);
-      html += `<div class="heatmap-cell" data-count="${cnt}" title="${iso}: ${countMap[iso] || 0} 題"></div>`;
-    }
-    html += '</div>';
-  }
-  grid.innerHTML = html;
+let calYear  = new Date().getFullYear();
+let calMonth = new Date().getMonth(); // 0-indexed
+let calSelected = today();
 
-  const tagCount = {};
-  db.problems.forEach(p => (p.tags || []).forEach(t => { tagCount[t] = (tagCount[t] || 0) + 1; }));
-  const tags = Object.entries(tagCount).sort((a, b) => b[1] - a[1]);
-  document.getElementById('tagStats').innerHTML = tags.length ? tags.map(([t, c]) => `
-    <div class="stat-card" style="padding:14px 16px">
-      <div class="stat-num" style="font-size:22px;color:var(--accent4)">${c}</div>
-      <div class="stat-label">${escH(t)}</div>
-    </div>`).join('') : '<div style="color:var(--muted)">尚無標籤資料</div>';
+function calPrev() { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); }
+function calNext() { calMonth++; if (calMonth > 11) { calMonth = 0;  calYear++; } renderCalendar(); }
+
+function calIso(y, m, d) {
+  return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+
+function renderCalendar() {
+  const t = today();
+  const DOW = ['日','一','二','三','四','五','六'];
+  const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+
+  document.getElementById('calMonthTitle').textContent = `${calYear} 年 ${monthNames[calMonth]}`;
+
+  // Build due-date map: date → [problems]
+  const dueMap = {};
+  db.problems.forEach(p => {
+    if (p.nextDate) {
+      if (!dueMap[p.nextDate]) dueMap[p.nextDate] = [];
+      dueMap[p.nextDate].push(p);
+    }
+  });
+  // Build done map: date → [ids]
+  const doneMap = {};
+  Object.entries(db.daily || {}).forEach(([date, v]) => { doneMap[date] = v.done || []; });
+
+  const firstDay = new Date(calYear, calMonth, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const prevDays = new Date(calYear, calMonth, 0).getDate();
+
+  let html = DOW.map(d => `<div class="cal-dow">${d}</div>`).join('');
+
+  // Cells before month start (prev month)
+  for (let i = 0; i < firstDay; i++) {
+    const day = prevDays - firstDay + 1 + i;
+    const iso = calIso(calMonth === 0 ? calYear-1 : calYear, calMonth === 0 ? 11 : calMonth-1, day);
+    html += calCellHtml(iso, day, true, dueMap, doneMap, t);
+  }
+  // Current month
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso = calIso(calYear, calMonth, d);
+    html += calCellHtml(iso, d, false, dueMap, doneMap, t);
+  }
+  // Trailing cells (next month)
+  const total = firstDay + daysInMonth;
+  const trailing = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (let d = 1; d <= trailing; d++) {
+    const iso = calIso(calMonth === 11 ? calYear+1 : calYear, calMonth === 11 ? 0 : calMonth+1, d);
+    html += calCellHtml(iso, d, true, dueMap, doneMap, t);
+  }
+
+  document.getElementById('calGrid').innerHTML = html;
+  renderCalDetail();
+}
+
+function calCellHtml(iso, dayNum, otherMonth, dueMap, doneMap, t) {
+  const isToday    = iso === t;
+  const isSelected = iso === calSelected;
+  const due  = (dueMap[iso]  || []);
+  const done = (doneMap[iso] || []);
+
+  let cls = 'cal-cell';
+  if (otherMonth) cls += ' cal-other';
+  if (isToday)    cls += ' cal-today';
+  if (isSelected) cls += ' cal-selected';
+
+  // dots: up to 5 due (yellow) + up to 5 done (green)
+  const dueDots  = due.slice(0,5).map(() => `<div class="cal-dot cal-dot-due"></div>`).join('');
+  const doneDots = done.slice(0,5).map(() => `<div class="cal-dot cal-dot-done"></div>`).join('');
+
+  return `<div class="${cls}" onclick="calSelectDay('${iso}')">
+    <div class="cal-cell-num">${dayNum}</div>
+    <div class="cal-dots">${dueDots}${doneDots}</div>
+  </div>`;
+}
+
+function calSelectDay(iso) {
+  calSelected = iso;
+  // Sync month view if clicking other-month cell
+  const [y, m] = iso.split('-').map(Number);
+  if (y !== calYear || m-1 !== calMonth) { calYear = y; calMonth = m-1; }
+  renderCalendar();
+}
+
+function renderCalDetail() {
+  const el = document.getElementById('calDetail');
+  if (!calSelected) { el.style.display = 'none'; return; }
+  el.style.display = '';
+
+  const due  = db.problems.filter(p => p.nextDate === calSelected);
+  const doneIds = db.daily?.[calSelected]?.done || [];
+  const done = doneIds.map(id => db.problems.find(p => p.id === id)).filter(Boolean);
+
+  const [y, m, d] = calSelected.split('-');
+  const label = `${y} 年 ${parseInt(m)} 月 ${parseInt(d)} 日`;
+
+  let html = `<div class="cal-detail-date">${label}</div>`;
+
+  // Due problems
+  html += `<div class="cal-sec-label">📌 應寫題目（${due.length}）</div>`;
+  if (due.length) {
+    html += `<div class="cal-item-list">` + due.map(p => {
+      const isDone = doneIds.includes(p.id);
+      return `<div class="cal-item">
+        <span class="cal-item-num">#${p.num}</span>
+        <span class="cal-item-title">
+          <a class="lc-link" style="color:${isDone ? 'var(--muted)' : '#e0eeff'};${isDone ? 'text-decoration:line-through' : ''}" href="https://leetcode.com/problems/${slugify(p.title)}/" target="_blank">${escH(p.title)}</a>
+        </span>
+        <span class="badge badge-${p.diff.toLowerCase()}">${p.diff}</span>
+        <span class="badge badge-${p.status}">${stLabel(p.status)}</span>
+        ${isDone ? `<span style="color:var(--accent);font-size:11px">✓ 已完成</span>` : `<button class="btn-icon" onclick="openAttempt('${p.id}')" title="記錄">✏</button>`}
+        <button class="btn-icon" onclick="openEdit('${p.id}')" title="編輯">⚙</button>
+      </div>`;
+    }).join('') + `</div>`;
+  } else {
+    html += `<div style="color:var(--muted);font-size:12px;padding:8px 0">無排程題目</div>`;
+  }
+
+  // Done problems (that are done but not in due list)
+  const extraDone = done.filter(p => p.nextDate !== calSelected);
+  if (extraDone.length) {
+    html += `<div class="cal-sec-label" style="margin-top:16px">✅ 額外完成（${extraDone.length}）</div>`;
+    html += `<div class="cal-item-list">` + extraDone.map(p => `<div class="cal-item">
+      <span class="cal-item-num">#${p.num}</span>
+      <span class="cal-item-title">
+        <a class="lc-link" style="color:var(--muted)" href="https://leetcode.com/problems/${slugify(p.title)}/" target="_blank">${escH(p.title)}</a>
+      </span>
+      <span class="badge badge-${p.diff.toLowerCase()}">${p.diff}</span>
+      <span class="badge badge-${p.status}">${stLabel(p.status)}</span>
+      <button class="btn-icon" onclick="openEdit('${p.id}')" title="編輯">⚙</button>
+    </div>`).join('') + `</div>`;
+  }
+
+  el.innerHTML = html;
 }
 
 // ═══════════════════════════════════════════════════
