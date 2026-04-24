@@ -139,17 +139,6 @@
   .section-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:#fff}
   .section-sub{color:var(--muted);font-size:11px}
 
-  .heatmap-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:22px;margin-bottom:22px;overflow-x:auto}
-  .heatmap-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:600;color:#fff;margin-bottom:14px}
-  .heatmap{display:flex;gap:4px}
-  .heatmap-col{display:flex;flex-direction:column;gap:4px}
-  .heatmap-cell{width:14px;height:14px;border-radius:3px;background:var(--border);cursor:default;transition:transform .1s}
-  .heatmap-cell:hover{transform:scale(1.5);z-index:10}
-  .heatmap-cell[data-count="1"]{background:rgba(0,229,160,.25)}
-  .heatmap-cell[data-count="2"]{background:rgba(0,229,160,.45)}
-  .heatmap-cell[data-count="3"]{background:rgba(0,229,160,.65)}
-  .heatmap-cell[data-count="4"]{background:rgba(0,229,160,.85)}
-  .heatmap-cell[data-count="5"]{background:rgba(0,229,160,1)}
 
   .attempt-log{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-top:6px;font-size:12px;color:var(--muted);max-height:150px;overflow-y:auto}
   .attempt-item{padding:5px 0;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -244,7 +233,7 @@
   <div class="tabs">
     <div class="tab active" onclick="switchTab('daily')">📅 今日練習</div>
     <div class="tab" onclick="switchTab('problems')">📋 題目列表</div>
-    <div class="tab" onclick="switchTab('heatmap')">🗓 行事曆</div>
+    <div class="tab" onclick="switchTab('calendar')">🗓 行事曆</div>
   </div>
 
   <div class="section active" id="tab-daily">
@@ -301,7 +290,7 @@
     </div>
   </div>
 
-  <div class="section" id="tab-heatmap">
+  <div class="section" id="tab-calendar">
     <div class="cal-wrap">
       <div class="cal-nav">
         <button class="btn btn-ghost btn-sm" onclick="calPrev()">← 上個月</button>
@@ -725,7 +714,7 @@ let currentTab = 'daily';
 function switchTab(name) {
   currentTab = name;
   document.querySelectorAll('.tab').forEach((t, i) => {
-    t.classList.toggle('active', ['daily','problems','heatmap'][i] === name);
+    t.classList.toggle('active', ['daily','problems','calendar'][i] === name);
   });
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
@@ -734,7 +723,7 @@ function switchTab(name) {
 function renderCurrentTab() {
   if (currentTab === 'daily')    renderDaily();
   if (currentTab === 'problems') renderTable();
-  if (currentTab === 'heatmap')  renderCalendar();
+  if (currentTab === 'calendar') renderCalendar();
 }
 
 // ═══════════════════════════════════════════════════
