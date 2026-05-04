@@ -537,6 +537,11 @@
   .nd-soon    { color: var(--text) }
   .nd-later   { color: var(--muted) }
 
+  th.th-sort { cursor: pointer; user-select: none; transition: color .15s }
+  th.th-sort:hover { color: var(--text) }
+  th.th-sort.active { color: var(--text) }
+  .sort-ind { font-size: 9px; opacity: .75; margin-left: 3px }
+
   .empty-state { text-align: center; padding: 60px 20px; color: var(--muted) }
   .empty-icon { font-size: 42px; margin-bottom: 12px; opacity: .85 }
   .empty-state p { font-size: 13px }
@@ -1104,9 +1109,7 @@
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr>
-          <th>#</th><th>題目</th><th>難度</th><th>狀態</th><th>標籤</th><th>嘗試</th><th>下次</th><th>最後更新</th><th></th>
-        </tr></thead>
+        <thead id="problemsThead"></thead>
         <tbody id="problemsTbody"></tbody>
       </table>
     </div>
@@ -1693,6 +1696,45 @@ async function addToToday() {
 // ═══════════════════════════════════════════════════
 // TABLE
 // ═══════════════════════════════════════════════════
+const TABLE_COLS = [
+  { key: 'num',       label: '#' },
+  { key: 'title',     label: '題目' },
+  { key: 'diff',      label: '難度' },
+  { key: 'status',    label: '狀態' },
+  { key: 'tags',      label: '標籤' },
+  { key: 'attempts',  label: '嘗試' },
+  { key: 'nextDate',  label: '下次' },
+  { key: 'updatedAt', label: '最後更新' },
+  { key: null,        label: '' },
+];
+const DIFF_ORDER = { Easy: 0, Medium: 1, Hard: 2 };
+const STATUS_ORDER = ['todo','first_time_done','unfamiliar','confident_1','confident_2','confident_3','confident_4']
+  .reduce((m, k, i) => (m[k] = i, m), {});
+let tableSort = { key: 'num', dir: 'asc' };
+
+function tableSortValue(p, key) {
+  if (key === 'num')       return p.num;
+  if (key === 'title')     return (p.title || '').toLowerCase();
+  if (key === 'diff')      return DIFF_ORDER[p.diff] ?? 99;
+  if (key === 'status')    return STATUS_ORDER[p.status] ?? 99;
+  if (key === 'tags')      return ((p.tags || [])[0] || '￿').toLowerCase();
+  if (key === 'attempts')  return p.attempts || 0;
+  if (key === 'nextDate')  return p.nextDate || '￿';
+  if (key === 'updatedAt') return p.updatedAt || '';
+  return 0;
+}
+
+function setTableSort(key) {
+  if (!key) return;
+  if (tableSort.key === key) {
+    tableSort.dir = tableSort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    tableSort.key = key;
+    tableSort.dir = 'asc';
+  }
+  renderTable();
+}
+
 function renderTable() {
   const q  = document.getElementById('searchBox').value.toLowerCase();
   const fs = document.getElementById('filterStatus').value;
@@ -1702,7 +1744,23 @@ function renderTable() {
     if (fs && p.status !== fs) return false;
     if (fd && p.diff !== fd) return false;
     return true;
-  }).sort((a, b) => a.num - b.num);
+  });
+
+  const dir = tableSort.dir === 'asc' ? 1 : -1;
+  list.sort((a, b) => {
+    const av = tableSortValue(a, tableSort.key);
+    const bv = tableSortValue(b, tableSort.key);
+    if (av < bv) return -1 * dir;
+    if (av > bv) return  1 * dir;
+    return a.num - b.num;
+  });
+
+  document.getElementById('problemsThead').innerHTML = '<tr>' + TABLE_COLS.map(c => {
+    if (!c.key) return '<th></th>';
+    const active = c.key === tableSort.key;
+    const arrow = active ? (tableSort.dir === 'asc' ? '▲' : '▼') : '';
+    return `<th class="th-sort${active ? ' active' : ''}" onclick="setTableSort('${c.key}')">${c.label}${arrow ? ` <span class="sort-ind">${arrow}</span>` : ''}</th>`;
+  }).join('') + '</tr>';
 
   const tbody = document.getElementById('problemsTbody');
   if (!list.length) {
@@ -1719,7 +1777,7 @@ function renderTable() {
     <td><span class="badge badge-${p.status}">${stLabel(p.status)}</span></td>
     <td><div class="tags">${(p.tags || []).map(t => `<span class="tag">${escH(t)}</span>`).join('')}</div></td>
     <td style="color:var(--muted)">${p.attempts || 0}</td>
-    <td class="${nextDateClass(p.nextDate)}">${nextDateHuman(p.nextDate)}</td>
+    <td class="${nextDateClass(p.nextDate)}">${p.nextDate || '—'}</td>
     <td style="color:var(--muted)">${fmt(p.updatedAt)}</td>
     <td>
       <div style="display:flex;gap:4px">
